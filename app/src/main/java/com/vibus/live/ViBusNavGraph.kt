@@ -1,4 +1,4 @@
-package com.svt.vibuslive.presentation.navigation
+package com.vibus.live
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
