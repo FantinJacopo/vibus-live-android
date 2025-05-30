@@ -10,6 +10,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,6 +65,7 @@ import java.text.DecimalFormat
 @Composable
 fun EnhancedBusCard(
     bus: Bus,
+    onBusClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -77,7 +79,18 @@ fun EnhancedBusCard(
 
     GradientCard(
         colors = getLineGradient(bus.line),
-        modifier = modifier.scale(scale),
+        modifier = modifier
+            .scale(scale)
+            .then(
+                if (onBusClick != null) {
+                    Modifier.clickable {
+                        isPressed = true
+                        onBusClick()
+                    }
+                } else {
+                    Modifier
+                }
+            ),
         cornerRadius = 20
     ) {
         Row(
@@ -452,9 +465,10 @@ fun SystemStatsRow(
 @Composable
 fun BusCard(
     bus: Bus,
+    onBusClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    EnhancedBusCard(bus = bus, modifier = modifier)
+    EnhancedBusCard(bus = bus, onBusClick = onBusClick, modifier = modifier)
 }
 
 @Composable

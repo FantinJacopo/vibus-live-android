@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.vibus.live.ui.screens.dashboard.DashboardScreen
+import com.vibus.live.ui.screens.map.FullscreenMapScreen
 
 @Composable
 fun ViBusNavGraph(
@@ -20,7 +21,34 @@ fun ViBusNavGraph(
         modifier = modifier
     ) {
         composable("dashboard") {
-            DashboardScreen()
+            DashboardScreen(
+                onNavigateToMap = { busId ->
+                    if (busId != null) {
+                        navController.navigate("map/$busId")
+                    } else {
+                        navController.navigate("map")
+                    }
+                }
+            )
+        }
+
+        composable("map") {
+            FullscreenMapScreen(
+                selectedBusId = null,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("map/{busId}") { backStackEntry ->
+            val busId = backStackEntry.arguments?.getString("busId")
+            FullscreenMapScreen(
+                selectedBusId = busId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }

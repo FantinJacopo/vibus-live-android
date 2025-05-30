@@ -25,6 +25,7 @@ import com.vibus.live.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
+    onNavigateToMap: (String?) -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -44,40 +45,39 @@ fun DashboardScreen(
                         Icon(
                             imageVector = Icons.Default.DirectionsBus,
                             contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "ViBus Live",
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = "SVT Vicenza",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
-                        }
+                        Text(
+                            text = "ViBus Live",
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.titleLarge
+                        )
                     }
                 },
                 actions = {
-                    FloatingActionCardButton(
-                        icon = Icons.Default.Refresh,
-                        label = "Aggiorna",
-                        onClick = { viewModel.refresh() },
-                        backgroundColor = Color.White.copy(alpha = 0.2f),
-                        contentColor = Color.White,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
+                    IconButton(onClick = { viewModel.refresh() }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Aggiorna",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+
+                    IconButton(onClick = { onNavigateToMap(null) }) {
+                        Icon(
+                            imageVector = Icons.Default.Fullscreen,
+                            contentDescription = "Mappa Fullscreen",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
+                    containerColor = MaterialTheme.colorScheme.primary
                 ),
-                modifier = Modifier.background(
-                    brush = Brush.horizontalGradient(PrimaryGradient)
-                )
+                modifier = Modifier.height(56.dp) // Header più piccolo
             )
         }
     ) { paddingValues ->
@@ -110,6 +110,7 @@ fun DashboardScreen(
                 ) {
                     BeautifulDashboardContent(
                         uiState = uiState,
+                        onNavigateToMap = onNavigateToMap,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
@@ -224,6 +225,7 @@ private fun BeautifulErrorScreen(
 @Composable
 private fun BeautifulDashboardContent(
     uiState: DashboardUiState,
+    onNavigateToMap: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -294,6 +296,7 @@ private fun BeautifulDashboardContent(
                 ) {
                     EnhancedBusCard(
                         bus = bus,
+                        onBusClick = { onNavigateToMap(bus.id) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
