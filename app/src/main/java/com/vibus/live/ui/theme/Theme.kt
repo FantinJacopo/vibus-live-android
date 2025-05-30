@@ -99,16 +99,17 @@ fun ViBusLiveTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // Gradient status bar effect
-            window.statusBarColor = if (darkTheme) {
-                Color(0xFF1A1A2E).toArgb()
-            } else {
-                SVTBlue.toArgb()
-            }
-            window.navigationBarColor = colorScheme.surface.toArgb()
+
+            // Configura la status bar per un look più moderno
+            window.statusBarColor = Color.Transparent.toArgb()
+            window.navigationBarColor = Color.Transparent.toArgb()
+
+            // Abilita edge-to-edge
+            WindowCompat.setDecorFitsSystemWindows(window, false)
 
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
+                // Status bar sempre con testo chiaro per il gradiente SVT
+                isAppearanceLightStatusBars = false
                 isAppearanceLightNavigationBars = !darkTheme
             }
         }

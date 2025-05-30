@@ -9,12 +9,12 @@ val SVTAccent = Color(0xFF7209B7)
 val SVTWarning = Color(0xFFFF8500)
 val SVTError = Color(0xFFFF6B35)
 
-// Line Colors con gradazioni più ricche
-val Line1Color = Color(0xFFE63946) // Rosso vibrante - Stanga-Ospedale
-val Line2Color = Color(0xFF1D3557) // Blu scuro elegante - Anconetta-Ferrovieri
-val Line3Color = Color(0xFF457B9D) // Azzurro profondo - Maddalene-Cattane
-val Line5Color = Color(0xFF663399) // Viola intenso - Villaggio-Centro
-val Line7Color = Color(0xFFFF6B35) // Arancione brillante - Laghetto-Stadio
+
+val Line1Color = Color(0xFFE63946)
+val Line2Color = Color(0xFF71BD13)
+val Line3Color = Color(0xFFB05DBB)
+val Line5Color = Color(0xFFF7BF15)
+val Line7Color = Color(0xFFFF6B35)
 
 // Colori di stato con variazioni
 val StatusGreen = Color(0xFF06D6A0)

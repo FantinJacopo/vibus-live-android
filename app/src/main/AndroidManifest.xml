@@ -30,12 +30,16 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
 
-        <!-- Activity principale -->
+        <!-- Activity principale con splash screen -->
         <activity
             android:name="com.vibus.live.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.ViBusLive">
+            android:theme="@style/Theme.ViBusLive.Splash"
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -47,12 +51,29 @@
             android:name=".debug.MapsDebugActivity"
             android:exported="true"
             android:label="Debug - Google Maps"
-            android:theme="@style/Theme.ViBusLive">
+            android:theme="@style/Theme.ViBusLive"
+            android:parentActivityName=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Debug Activity per dati InfluxDB -->
+        <activity
+            android:name=".debug.DebugDataActivity"
+            android:exported="false"
+            android:label="Debug - Dati InfluxDB"
+            android:theme="@style/Theme.ViBusLive"
+            android:parentActivityName=".MainActivity" />
+
+        <!-- Debug Activity per test connessione -->
+        <activity
+            android:name=".debug.ConnectionTestActivity"
+            android:exported="false"
+            android:label="Debug - Test Connessione"
+            android:theme="@style/Theme.ViBusLive"
+            android:parentActivityName=".MainActivity" />
 
         <!-- Google Maps API Key - SOSTITUIRE CON LA API KEY o impostarla nel file local.properties -->
         <meta-data

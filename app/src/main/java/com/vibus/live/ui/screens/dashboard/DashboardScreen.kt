@@ -1,26 +1,77 @@
 package com.vibus.live.ui.screens.dashboard
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.*
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vibus.live.data.LineStats
-import com.vibus.live.ui.components.*
-import com.vibus.live.ui.theme.*
+import com.vibus.live.ui.components.AnimatedCounter
+import com.vibus.live.ui.components.EnhancedBusCard
+import com.vibus.live.ui.components.EnhancedLineStatsCard
+import com.vibus.live.ui.components.EnhancedWelcomeHeader
+import com.vibus.live.ui.components.FloatingActionCardButton
+import com.vibus.live.ui.components.GradientCard
+import com.vibus.live.ui.components.PulsingIcon
+import com.vibus.live.ui.components.RealGoogleMapsCard
+import com.vibus.live.ui.components.WaveLoadingIndicator
+import com.vibus.live.ui.theme.ErrorGradient
+import com.vibus.live.ui.theme.SVTBlue
+import com.vibus.live.ui.theme.SVTLightBlue
+import com.vibus.live.ui.theme.StatusBlue
+import com.vibus.live.ui.theme.StatusGreen
+import com.vibus.live.ui.theme.StatusRed
+import com.vibus.live.ui.theme.getStatusColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,43 +92,132 @@ fun DashboardScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.DirectionsBus,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Icona app con gradiente
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            Color.White.copy(alpha = 0.3f),
+                                            Color.Transparent
+                                        )
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DirectionsBus,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "ViBus Live",
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            style = MaterialTheme.typography.titleLarge
-                        )
+
+                        Column {
+                            Text(
+                                text = "ViBus Live",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleLarge,
+                                maxLines = 1
+                            )
+
+                            if (uiState.buses.isNotEmpty() && !uiState.isLoading) {
+                                Text(
+                                    text = "${uiState.buses.size} autobus attivi",
+                                    color = Color.White.copy(alpha = 0.85f),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1
+                                )
+                            }
+                        }
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Aggiorna",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                    // Badge di stato connessione
+                    if (!uiState.isLoading && uiState.error == null) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = StatusGreen.copy(alpha = 0.9f),
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Text(
+                                text = "🟢 LIVE",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    } else if (uiState.error != null) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = StatusRed.copy(alpha = 0.9f),
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Text(
+                                text = "⚠️ OFFLINE",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                     }
 
-                    IconButton(onClick = { onNavigateToMap(null) }) {
+                    // Pulsante refresh con indicatore di caricamento
+                    IconButton(
+                        onClick = { viewModel.refresh() },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Aggiorna",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+
+                    // Pulsante mappa fullscreen
+                    IconButton(
+                        onClick = { onNavigateToMap(null) },
+                        modifier = Modifier.size(48.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Fullscreen,
                             contentDescription = "Mappa Fullscreen",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = Color.Transparent
                 ),
-                modifier = Modifier.height(56.dp) // Header più piccolo
+                modifier = Modifier
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(SVTBlue, SVTLightBlue)
+                        )
+                    )
+                    .statusBarsPadding()
             )
         }
     ) { paddingValues ->
@@ -233,9 +373,9 @@ private fun BeautifulDashboardContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Welcome Header animato
+        // Enhanced Welcome Header animato
         item {
-            WelcomeHeader(systemStatus = uiState.systemStatus)
+            EnhancedWelcomeHeader(systemStatus = uiState.systemStatus)
         }
 
         // System Status Cards animate
@@ -315,61 +455,6 @@ private fun BeautifulDashboardContent(
 }
 
 @Composable
-private fun WelcomeHeader(
-    systemStatus: com.vibus.live.data.SystemStatus?,
-    modifier: Modifier = Modifier
-) {
-    GradientCard(
-        colors = SecondaryGradient,
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "🌟 Benvenuto in ViBus Live",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Monitoraggio in tempo reale del trasporto pubblico SVT",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                systemStatus?.let { status ->
-                    StatusBadge(
-                        text = "Sistema ${status.systemHealth.name}",
-                        color = when (status.systemHealth) {
-                            com.vibus.live.data.SystemHealth.EXCELLENT -> StatusGreen
-                            com.vibus.live.data.SystemHealth.GOOD -> StatusBlue
-                            com.vibus.live.data.SystemHealth.FAIR -> StatusYellow
-                            com.vibus.live.data.SystemHealth.POOR -> StatusRed
-                            com.vibus.live.data.SystemHealth.CRITICAL -> StatusRed
-                        },
-                        animated = status.systemHealth != com.vibus.live.data.SystemHealth.EXCELLENT
-                    )
-                }
-            }
-
-            PulsingIcon(
-                icon = Icons.Default.LocationOn,
-                tint = MaterialTheme.colorScheme.primary,
-                size = 48
-            )
-        }
-    }
-}
-
-@Composable
 private fun AnimatedSystemStatsRow(
     systemStatus: com.vibus.live.data.SystemStatus?,
     modifier: Modifier = Modifier
@@ -412,7 +497,6 @@ private fun BeautifulMapSection(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        // Header semplice senza dropdown
         Text(
             text = "🗺️ Mappa Tempo Reale",
             style = MaterialTheme.typography.headlineSmall,
@@ -430,7 +514,6 @@ private fun BeautifulMapSection(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Mappa sempre visibile
         RealGoogleMapsCard(
             buses = buses,
             modifier = Modifier

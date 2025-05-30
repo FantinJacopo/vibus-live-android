@@ -7,4 +7,8 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Colori SVT -->
+    <color name="svt_blue">#004E89</color>
+    <color name="svt_light_blue">#00A8CC</color>
+    <color name="svt_accent">#7209B7</color>
 </resources>

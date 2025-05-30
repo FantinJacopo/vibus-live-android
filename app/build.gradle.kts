@@ -91,8 +91,9 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
 
-    // Navigation
+    // Navigation con animazioni
     implementation("androidx.navigation:navigation-compose:2.7.6")
+    implementation("androidx.navigation:navigation-runtime-ktx:2.7.6")
 
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
@@ -135,4 +136,29 @@ dependencies {
 
     // JSON
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // Animazioni e UI migliorata
+    implementation("androidx.compose.animation:animation:1.5.8")
+    implementation("androidx.compose.animation:animation-core:1.5.8")
+    implementation("androidx.compose.animation:animation-graphics:1.5.8")
+
+    // Gestione System UI
+    implementation("androidx.compose.foundation:foundation:1.5.8")
+    implementation("androidx.compose.runtime:runtime-livedata:1.5.8")
+
+    // Window Insets per edge-to-edge
+    implementation("androidx.compose.foundation:foundation-layout:1.5.8")
+    implementation("androidx.activity:activity-compose:1.8.2")
+
+    // Splash Screen API
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
+    // Testing
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
