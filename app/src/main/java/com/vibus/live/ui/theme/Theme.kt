@@ -18,30 +18,66 @@ import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = SVTBlue,
-    secondary = SVTLightBlue,
-    tertiary = SVTAccent,
-    background = BackgroundDark,
-    surface = SurfaceDark,
-    error = SVTError,
     onPrimary = Color.White,
+    primaryContainer = SVTBlue.copy(alpha = 0.2f),
+    onPrimaryContainer = SVTLightBlue,
+
+    secondary = SVTLightBlue,
     onSecondary = Color.White,
+    secondaryContainer = SVTLightBlue.copy(alpha = 0.2f),
+    onSecondaryContainer = SVTLightBlue,
+
+    tertiary = SVTAccent,
     onTertiary = Color.White,
+    tertiaryContainer = SVTAccent.copy(alpha = 0.2f),
+    onTertiaryContainer = SVTAccent,
+
+    background = BackgroundDark,
     onBackground = Color.White,
+    surface = SurfaceDark,
     onSurface = Color.White,
+    surfaceVariant = CardDark,
+    onSurfaceVariant = Color.White.copy(alpha = 0.7f),
+
+    error = SVTError,
+    onError = Color.White,
+    errorContainer = SVTError.copy(alpha = 0.2f),
+    onErrorContainer = SVTError,
+
+    outline = Color.White.copy(alpha = 0.12f),
+    outlineVariant = Color.White.copy(alpha = 0.06f),
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = SVTBlue,
-    secondary = SVTLightBlue,
-    tertiary = SVTAccent,
-    background = BackgroundLight,
-    surface = SurfaceLight,
-    error = SVTError,
     onPrimary = Color.White,
+    primaryContainer = SVTBlue.copy(alpha = 0.1f),
+    onPrimaryContainer = SVTBlue,
+
+    secondary = SVTLightBlue,
     onSecondary = Color.White,
+    secondaryContainer = SVTLightBlue.copy(alpha = 0.1f),
+    onSecondaryContainer = SVTLightBlue,
+
+    tertiary = SVTAccent,
     onTertiary = Color.White,
+    tertiaryContainer = SVTAccent.copy(alpha = 0.1f),
+    onTertiaryContainer = SVTAccent,
+
+    background = BackgroundLight,
     onBackground = Color.Black,
+    surface = SurfaceLight,
     onSurface = Color.Black,
+    surfaceVariant = CardLight,
+    onSurfaceVariant = Color.Black.copy(alpha = 0.7f),
+
+    error = SVTError,
+    onError = Color.White,
+    errorContainer = SVTError.copy(alpha = 0.1f),
+    onErrorContainer = SVTError,
+
+    outline = Color.Black.copy(alpha = 0.12f),
+    outlineVariant = Color.Black.copy(alpha = 0.06f),
 )
 
 @Composable
@@ -63,8 +99,18 @@ fun ViBusLiveTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+            // Gradient status bar effect
+            window.statusBarColor = if (darkTheme) {
+                Color(0xFF1A1A2E).toArgb()
+            } else {
+                SVTBlue.toArgb()
+            }
+            window.navigationBarColor = colorScheme.surface.toArgb()
+
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
         }
     }
 
