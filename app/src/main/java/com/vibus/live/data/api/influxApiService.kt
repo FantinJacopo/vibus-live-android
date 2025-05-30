@@ -14,7 +14,7 @@ interface InfluxApiService {
     ): Response<String>
 
     companion object {
-        const val BASE_URL = NetworkConfig.CURRENT_BASE_URL
+        val BASE_URL = NetworkConfig.CURRENT_BASE_URL
         const val TOKEN = "Token ${NetworkConfig.INFLUX_TOKEN}"
         const val ORG = NetworkConfig.INFLUX_ORG
         const val BUCKET = NetworkConfig.INFLUX_BUCKET

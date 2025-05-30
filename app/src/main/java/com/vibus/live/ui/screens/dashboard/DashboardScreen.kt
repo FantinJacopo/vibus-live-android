@@ -72,6 +72,7 @@ import com.vibus.live.ui.theme.StatusBlue
 import com.vibus.live.ui.theme.StatusGreen
 import com.vibus.live.ui.theme.StatusRed
 import com.vibus.live.ui.theme.getStatusColor
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,29 +144,29 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
-                    // Badge di stato connessione
-                    if (!uiState.isLoading && uiState.error == null) {
+                    // Badge di stato connessione MQTT
+                    if (!uiState.isLoading && uiState.error == null && uiState.isMqttConnected) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = StatusGreen.copy(alpha = 0.9f),
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
                             Text(
-                                text = "🟢 LIVE",
+                                text = "🔄 MQTT",
                                 color = Color.White,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
-                    } else if (uiState.error != null) {
+                    } else if (!uiState.isLoading && !uiState.isMqttConnected) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = StatusRed.copy(alpha = 0.9f),
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
                             Text(
-                                text = "⚠️ OFFLINE",
+                                text = "📡 HTTP",
                                 color = Color.White,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
@@ -250,6 +251,7 @@ fun DashboardScreen(
                 ) {
                     BeautifulDashboardContent(
                         uiState = uiState,
+                        viewModel = viewModel,
                         onNavigateToMap = onNavigateToMap,
                         modifier = Modifier
                             .fillMaxSize()
@@ -365,6 +367,7 @@ private fun BeautifulErrorScreen(
 @Composable
 private fun BeautifulDashboardContent(
     uiState: DashboardUiState,
+    viewModel: DashboardViewModel,
     onNavigateToMap: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -373,9 +376,23 @@ private fun BeautifulDashboardContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Enhanced Welcome Header animato
+        // Enhanced Welcome Header animato con MQTT
         item {
-            EnhancedWelcomeHeader(systemStatus = uiState.systemStatus)
+            val mqttStats = remember { mutableStateOf<com.vibus.live.data.mqtt.MqttConnectionStats?>(null) }
+
+            // Aggiorna stats MQTT periodicamente
+            LaunchedEffect(uiState.isMqttConnected) {
+                while (uiState.isMqttConnected) {
+                    mqttStats.value = viewModel.getMqttStats()
+                    delay(2000) // Aggiorna ogni 2 secondi
+                }
+            }
+
+            EnhancedWelcomeHeader(
+                systemStatus = uiState.systemStatus,
+                isMqttConnected = uiState.isMqttConnected,
+                mqttStats = mqttStats.value
+            )
         }
 
         // System Status Cards animate

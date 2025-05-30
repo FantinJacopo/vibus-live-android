@@ -1,6 +1,5 @@
 import java.util.Properties
 
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -17,11 +16,11 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.vibus.live"  // Cambiato per corrispondere al package
+    namespace = "com.vibus.live"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.vibus.live"  // Cambiato per corrispondere
+        applicationId = "com.vibus.live"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -30,12 +29,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
 
-        // Configurazione per Google Maps - legge da local.properties
+        // Configurazione per Google Maps
         val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
-
-        // Aggiunge anche come BuildConfig per accesso dal codice
         buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
+
+        // Configurazione MQTT
+        buildConfigField("Boolean", "ENABLE_MQTT", "true")
+        buildConfigField("String", "MQTT_BROKER_HOST", "\"more-elk-slightly.ngrok-free.app\"")
+        buildConfigField("int", "MQTT_BROKER_PORT", "1883")
     }
 
     buildTypes {
@@ -73,6 +75,20 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // Fix per conflitti HiveMQ/Netty
+            excludes += "/META-INF/INDEX.LIST"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/LICENSE"
+            excludes += "/META-INF/LICENSE.txt"
+            excludes += "/META-INF/license.txt"
+            excludes += "/META-INF/NOTICE"
+            excludes += "/META-INF/NOTICE.txt"
+            excludes += "/META-INF/notice.txt"
+            excludes += "/META-INF/ASL2.0"
+            excludes += "/META-INF/*.kotlin_module"
+            // Fix per duplicati Netty
+            pickFirst("**/META-INF/INDEX.LIST")
+            pickFirst("**/META-INF/io.netty.versions.properties")
         }
     }
 }
@@ -90,8 +106,9 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-service:2.7.0")
 
-    // Navigation con animazioni
+    // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.6")
     implementation("androidx.navigation:navigation-runtime-ktx:2.7.6")
 
@@ -104,11 +121,24 @@ dependencies {
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     kapt("com.google.dagger:hilt-compiler:2.48.1")
 
-    // Networking
+    // MQTT - HiveMQ Client con configurazioni per Android
+    implementation("com.hivemq:hivemq-mqtt-client:1.3.3") {
+        exclude(group = "io.netty", module = "netty-codec-mqtt")
+        exclude(group = "io.netty", module = "netty-handler-proxy")
+        exclude(group = "io.netty", module = "netty-resolver-dns")
+        exclude(group = "io.netty", module = "netty-transport-native-epoll")
+        exclude(group = "io.netty", module = "netty-transport-native-kqueue")
+    }
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Networking (mantenuto per fallback)
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.retrofit2:converter-scalars:2.9.0")  // Per CSV response
+    implementation("com.squareup.retrofit2:converter-scalars:2.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // JSON
+    implementation("com.google.code.gson:gson:2.10.1")
 
     // Charts
     implementation("com.patrykandpatrick.vico:compose:1.13.1")
@@ -134,23 +164,17 @@ dependencies {
     // Permissions
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
 
-    // JSON
-    implementation("com.google.code.gson:gson:2.10.1")
-
-    // Animazioni e UI migliorata
+    // Animazioni e UI
     implementation("androidx.compose.animation:animation:1.5.8")
     implementation("androidx.compose.animation:animation-core:1.5.8")
     implementation("androidx.compose.animation:animation-graphics:1.5.8")
 
-    // Gestione System UI
+    // System UI
     implementation("androidx.compose.foundation:foundation:1.5.8")
     implementation("androidx.compose.runtime:runtime-livedata:1.5.8")
-
-    // Window Insets per edge-to-edge
     implementation("androidx.compose.foundation:foundation-layout:1.5.8")
-    implementation("androidx.activity:activity-compose:1.8.2")
 
-    // Splash Screen API
+    // Splash Screen
     implementation("androidx.core:core-splashscreen:1.0.1")
 
     // Testing

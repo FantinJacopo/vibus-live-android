@@ -2,11 +2,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permessi necessari per networking e mappe -->
+    <!-- Permessi di rete esistenti -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Permessi aggiuntivi per MQTT -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Permessi per background service (Android 14+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <!-- Feature per Google Maps -->
     <uses-feature
@@ -46,7 +55,17 @@
             </intent-filter>
         </activity>
 
-        <!-- Debug Activity per test Maps (TEMPORANEO) -->
+        <!-- === MQTT BACKGROUND SERVICE === -->
+        <service
+            android:name=".service.MqttBackgroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"
+            android:stopWithTask="false" />
+
+        <!-- === DEBUG ACTIVITIES === -->
+
+        <!-- Debug Activity per test Maps -->
         <activity
             android:name=".debug.MapsDebugActivity"
             android:exported="true"
@@ -75,7 +94,22 @@
             android:theme="@style/Theme.ViBusLive"
             android:parentActivityName=".MainActivity" />
 
-        <!-- Google Maps API Key - SOSTITUIRE CON LA API KEY o impostarla nel file local.properties -->
+        <!-- Debug Activity per MQTT -->
+        <activity
+            android:name=".debug.MqttDebugActivity"
+            android:exported="true"
+            android:label="Debug - MQTT Monitor"
+            android:theme="@style/Theme.ViBusLive"
+            android:parentActivityName=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- === META-DATA === -->
+
+        <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
@@ -84,6 +118,18 @@
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
+
+        <!-- WorkManager initialization -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
     </application>
 </manifest>

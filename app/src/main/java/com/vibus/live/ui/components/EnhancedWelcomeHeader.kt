@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vibus.live.data.SystemHealth
 import com.vibus.live.data.SystemStatus
+import com.vibus.live.data.mqtt.MqttConnectionStats
 import com.vibus.live.ui.theme.*
 import kotlin.math.PI
 import kotlin.math.sin
@@ -29,6 +30,8 @@ import kotlin.math.sin
 @Composable
 fun EnhancedWelcomeHeader(
     systemStatus: SystemStatus?,
+    isMqttConnected: Boolean,
+    mqttStats: MqttConnectionStats?,
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "welcome-header")
@@ -86,7 +89,7 @@ fun EnhancedWelcomeHeader(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Text(
-                        text = "Benvenuto in ViBus Live",
+                        text = "ViBus Live - MQTT Edition",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -96,7 +99,7 @@ fun EnhancedWelcomeHeader(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Monitoraggio in tempo reale del trasporto pubblico SVT di Vicenza",
+                    text = "Monitoraggio in tempo reale via MQTT del trasporto pubblico SVT",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 20.sp
@@ -104,10 +107,19 @@ fun EnhancedWelcomeHeader(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Status badges migliorati
+                // Status badges migliorati con MQTT
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Badge MQTT Connection
+                    EnhancedStatusBadge(
+                        text = if (isMqttConnected) "MQTT Connected" else "HTTP Fallback",
+                        color = if (isMqttConnected) StatusGreen else StatusYellow,
+                        icon = if (isMqttConnected) Icons.Default.Wifi else Icons.Default.CloudOff,
+                        animated = isMqttConnected
+                    )
+
+                    // System Health Badge
                     systemStatus?.let { status ->
                         EnhancedStatusBadge(
                             text = "Sistema ${when(status.systemHealth) {
@@ -135,16 +147,46 @@ fun EnhancedWelcomeHeader(
                         )
                     }
 
+                    // Real-time data badge
                     EnhancedStatusBadge(
-                        text = "Tempo Reale",
-                        color = StatusGreen,
-                        icon = Icons.Default.Schedule,
-                        animated = true
+                        text = if (isMqttConnected) "Real-time" else "Polling",
+                        color = if (isMqttConnected) StatusGreen else StatusBlue,
+                        icon = if (isMqttConnected) Icons.Default.Speed else Icons.Default.Schedule,
+                        animated = isMqttConnected
                     )
+                }
+
+                // MQTT Stats se disponibili
+                if (isMqttConnected && mqttStats != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        MqttStatChip(
+                            label = "Messaggi",
+                            value = "${mqttStats.messagesReceived}",
+                            icon = Icons.Default.Message
+                        )
+
+                        MqttStatChip(
+                            label = "Uptime",
+                            value = "${mqttStats.connectionUptime / 1000}s",
+                            icon = Icons.Default.Timer
+                        )
+
+                        if (mqttStats.reconnectCount > 0) {
+                            MqttStatChip(
+                                label = "Reconnect",
+                                value = "${mqttStats.reconnectCount}",
+                                icon = Icons.Default.Refresh
+                            )
+                        }
+                    }
                 }
             }
 
-            // Icona animata laterale
+            // Icona animata laterale con indicatore MQTT
             Box(
                 modifier = Modifier.size(80.dp),
                 contentAlignment = Alignment.Center
@@ -180,20 +222,79 @@ fun EnhancedWelcomeHeader(
                             .size((40 + index * 15).dp)
                             .scale(scale)
                             .background(
-                                color = SVTBlue.copy(alpha = alpha * 0.3f),
+                                color = (if (isMqttConnected) StatusGreen else SVTBlue).copy(alpha = alpha * 0.3f),
                                 shape = CircleShape
                             )
                     )
                 }
 
-                // Icona centrale
+                // Icona centrale con stato MQTT
                 Icon(
-                    imageVector = Icons.Default.LocationOn,
+                    imageVector = if (isMqttConnected) Icons.Default.Wifi else Icons.Default.LocationOn,
                     contentDescription = null,
-                    tint = SVTBlue,
+                    tint = if (isMqttConnected) StatusGreen else SVTBlue,
                     modifier = Modifier.size(40.dp)
                 )
+
+                // Indicatore piccolo per MQTT
+                if (isMqttConnected) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .align(Alignment.TopEnd)
+                            .background(
+                                color = StatusGreen,
+                                shape = CircleShape
+                            )
+                            .border(
+                                width = 2.dp,
+                                color = Color.White,
+                                shape = CircleShape
+                            )
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun MqttStatChip(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = StatusGreen.copy(alpha = 0.1f),
+        shadowElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = StatusGreen,
+                modifier = Modifier.size(14.dp)
+            )
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = StatusGreen
+            )
+
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
