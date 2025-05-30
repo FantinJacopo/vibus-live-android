@@ -42,34 +42,19 @@
             </intent-filter>
         </activity>
 
-        <!-- Debug Activity per test connessione (rimuovi in produzione) -->
-        <!--<activity
-            android:name=".debug.ConnectionTestActivity"
+        <!-- Debug Activity per test Maps (TEMPORANEO) -->
+        <activity
+            android:name=".debug.MapsDebugActivity"
             android:exported="true"
-            android:label="Debug - Test Connessione"
-            android:theme="@style/Theme.ViBusLive">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>-->
-
-        <!-- Debug Activity per visualizzare dati -->
-        <!--<activity
-            android:name=".debug.DebugDataActivity"
-            android:exported="true"
-            android:label="Debug - Dati InfluxDB"
+            android:label="Debug - Google Maps"
             android:theme="@style/Theme.ViBusLive">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        -->
 
-        <!-- Google Maps API Key - IMPORTANTE: Sostituisci con la tua API key reale -->
-
-        <!-- In alternativa, usa il placeholder se hai configurato local.properties -->
+        <!-- Google Maps API Key - SOSTITUIRE CON LA API KEY o impostarla nel file local.properties -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
