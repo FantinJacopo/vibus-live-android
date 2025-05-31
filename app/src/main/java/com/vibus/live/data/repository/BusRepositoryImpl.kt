@@ -9,13 +9,14 @@ import com.vibus.live.data.SystemHealth
 import com.vibus.live.data.SystemStatus
 import com.vibus.live.data.api.InfluxApiService
 import com.vibus.live.data.api.InfluxCSVParser
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.delay
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.random.Random
 
 @Singleton
@@ -33,7 +34,7 @@ class BusRepositoryImpl @Inject constructor(
         while (true) {
             try {
                 Log.d(TAG, "=== FETCHING REAL-TIME DATA ===")
-                Log.d(TAG, "Timestamp: ${java.time.LocalDateTime.now()}")
+                Log.d(TAG, "Timestamp: ${LocalDateTime.now()}")
 
                 val response = api.queryFlux(
                     token = InfluxApiService.TOKEN,
@@ -346,8 +347,8 @@ class BusRepositoryImpl @Inject constructor(
                 val angle = (timeOffset + busIndex * 180 + lineId.toInt() * 72) * Math.PI / 180
                 val radius = 0.01 + (busIndex * 0.005) // Raggio diverso per ogni autobus
 
-                val lat = vicenzaCenter.latitude + radius * Math.cos(angle)
-                val lon = vicenzaCenter.longitude + radius * Math.sin(angle)
+                val lat = vicenzaCenter.latitude + radius * cos(angle)
+                val lon = vicenzaCenter.longitude + radius * sin(angle)
 
                 buses.add(
                     Bus(
@@ -394,7 +395,7 @@ class BusRepositoryImpl @Inject constructor(
             activeBuses = 8 + Random.nextInt(0, 3),
             totalPassengers = Random.nextInt(200, 400),
             averageSystemDelay = (Random.nextDouble() - 0.2) * 2.0,
-            systemHealth = SystemHealth.values()[Random.nextInt(SystemHealth.values().size)],
+            systemHealth = SystemHealth.entries[Random.nextInt(SystemHealth.entries.size)],
             lastUpdate = LocalDateTime.now()
         )
     }

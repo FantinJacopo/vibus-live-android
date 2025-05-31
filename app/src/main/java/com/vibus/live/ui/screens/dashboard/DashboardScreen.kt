@@ -62,6 +62,8 @@ import com.vibus.live.ui.components.EnhancedLineStatsCard
 import com.vibus.live.ui.components.EnhancedWelcomeHeader
 import com.vibus.live.ui.components.FloatingActionCardButton
 import com.vibus.live.ui.components.GradientCard
+import com.vibus.live.ui.components.MqttDebugPanel
+import com.vibus.live.ui.components.MqttStatusIndicator
 import com.vibus.live.ui.components.PulsingIcon
 import com.vibus.live.ui.components.RealGoogleMapsCard
 import com.vibus.live.ui.components.WaveLoadingIndicator
@@ -80,8 +82,8 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val mqttState by viewModel.mqttConnectionState.collectAsStateWithLifecycle()
 
-    // Animazione per l'entrata
     var isVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -97,7 +99,6 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.Start,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Icona app con gradiente
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
@@ -143,7 +144,11 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
-                    // Badge di stato connessione
+                    MqttStatusIndicator(
+                        connectionState = mqttState,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+
                     if (!uiState.isLoading && uiState.error == null) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
@@ -174,7 +179,6 @@ fun DashboardScreen(
                         }
                     }
 
-                    // Pulsante refresh con indicatore di caricamento
                     IconButton(
                         onClick = { viewModel.refresh() },
                         modifier = Modifier.size(48.dp)
@@ -195,7 +199,6 @@ fun DashboardScreen(
                         }
                     }
 
-                    // Pulsante mappa fullscreen
                     IconButton(
                         onClick = { onNavigateToMap(null) },
                         modifier = Modifier.size(48.dp)
@@ -250,6 +253,7 @@ fun DashboardScreen(
                 ) {
                     BeautifulDashboardContent(
                         uiState = uiState,
+                        mqttState = mqttState,
                         onNavigateToMap = onNavigateToMap,
                         modifier = Modifier
                             .fillMaxSize()
@@ -365,6 +369,7 @@ private fun BeautifulErrorScreen(
 @Composable
 private fun BeautifulDashboardContent(
     uiState: DashboardUiState,
+    mqttState: com.vibus.live.data.mqtt.MqttConnectionState,
     onNavigateToMap: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -373,12 +378,18 @@ private fun BeautifulDashboardContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Enhanced Welcome Header animato
         item {
             EnhancedWelcomeHeader(systemStatus = uiState.systemStatus)
         }
 
-        // System Status Cards animate
+        item {
+            MqttDebugPanel(
+                connectionState = mqttState,
+                busCount = uiState.buses.size,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         item {
             AnimatedSystemStatsRow(
                 systemStatus = uiState.systemStatus,
@@ -386,7 +397,6 @@ private fun BeautifulDashboardContent(
             )
         }
 
-        // Real-time Map con header migliorato
         item {
             BeautifulMapSection(
                 buses = uiState.buses,
@@ -394,7 +404,6 @@ private fun BeautifulDashboardContent(
             )
         }
 
-        // Line Statistics con animazioni
         if (uiState.lineStats.isNotEmpty()) {
             item {
                 BeautifulLineStatsSection(
@@ -403,7 +412,6 @@ private fun BeautifulDashboardContent(
             }
         }
 
-        // Real-time Bus List con animazioni staggered
         if (uiState.buses.isNotEmpty()) {
             item {
                 Text(
@@ -447,7 +455,6 @@ private fun BeautifulDashboardContent(
             }
         }
 
-        // Footer spacer
         item {
             Spacer(modifier = Modifier.height(32.dp))
         }

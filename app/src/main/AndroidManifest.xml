@@ -2,11 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permessi necessari per networking e mappe -->
+    <!-- Permessi necessari per networking, mappe e MQTT -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- Feature per Google Maps -->
     <uses-feature
@@ -46,7 +49,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Debug Activity per test Maps (TEMPORANEO) -->
+        <!-- Debug Activity per test Maps -->
         <activity
             android:name=".debug.MapsDebugActivity"
             android:exported="true"
@@ -75,7 +78,7 @@
             android:theme="@style/Theme.ViBusLive"
             android:parentActivityName=".MainActivity" />
 
-        <!-- Google Maps API Key - SOSTITUIRE CON LA API KEY o impostarla nel file local.properties -->
+        <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />

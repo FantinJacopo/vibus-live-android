@@ -2,8 +2,10 @@ package com.vibus.live.di
 
 import com.vibus.live.data.api.InfluxApiService
 import com.vibus.live.data.api.NetworkConfig
+import com.vibus.live.data.mqtt.MqttService
 import com.vibus.live.data.repository.BusRepository
 import com.vibus.live.data.repository.BusRepositoryImpl
+import com.vibus.live.data.repository.MqttOnlyBusRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -29,10 +31,8 @@ object AppModule {
             .connectTimeout(NetworkConfig.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(NetworkConfig.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(NetworkConfig.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            // Interceptor per gestire ngrok e debugging
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
-                    // Aggiungi header per ngrok se necessario
                     .apply {
                         if (NetworkConfig.CURRENT_BASE_URL.contains("ngrok")) {
                             addHeader("ngrok-skip-browser-warning", "true")
@@ -56,7 +56,6 @@ object AppModule {
         return Retrofit.Builder()
             .baseUrl(InfluxApiService.BASE_URL)
             .client(okHttpClient)
-            // Usa ScalarsConverter per gestire le risposte CSV di InfluxDB
             .addConverterFactory(ScalarsConverterFactory.create())
             .build()
     }
@@ -69,7 +68,22 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideBusRepository(apiService: InfluxApiService): BusRepository {
+    fun provideMqttService(): MqttService {
+        return MqttService()
+    }
+
+    @Provides
+    @Singleton
+    fun provideBusRepositoryImpl(apiService: InfluxApiService): BusRepositoryImpl {
         return BusRepositoryImpl(apiService)
+    }
+
+    // TEMPORANEO: Usa solo MQTT per test - nessun fallback HTTP
+    @Provides
+    @Singleton
+    fun provideBusRepository(
+        mqttService: MqttService
+    ): BusRepository {
+        return MqttOnlyBusRepository(mqttService)
     }
 }

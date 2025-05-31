@@ -5,7 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.vibus.live.data.Bus
 import com.vibus.live.data.LineStats
 import com.vibus.live.data.SystemStatus
+import com.vibus.live.data.mqtt.MqttConnectionState
 import com.vibus.live.data.repository.BusRepository
+import com.vibus.live.data.repository.MqttBusRepository
+import com.vibus.live.data.repository.MqttOnlyBusRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -18,6 +21,20 @@ class DashboardViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+
+    val mqttConnectionState: StateFlow<MqttConnectionState> = if (busRepository is MqttOnlyBusRepository) {
+        busRepository.getMqttConnectionState().stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Lazily,
+            initialValue = MqttConnectionState.Disconnected
+        )
+    } else {
+        flowOf(MqttConnectionState.Disconnected).stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Lazily,
+            initialValue = MqttConnectionState.Disconnected
+        )
+    }
 
     init {
         loadData()
@@ -71,6 +88,13 @@ class DashboardViewModel @Inject constructor(
 
     fun refresh() {
         loadData()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        if (busRepository is MqttOnlyBusRepository) {
+            busRepository.disconnectMqtt()
+        }
     }
 }
 
