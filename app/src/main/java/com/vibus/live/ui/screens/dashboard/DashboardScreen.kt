@@ -505,7 +505,7 @@ private fun BeautifulMapSection(
 ) {
     Column(modifier = modifier) {
         Text(
-            text = "🗺️ Mappa Tempo Reale",
+            text = "Mappa Tempo Reale",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary

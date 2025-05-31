@@ -99,7 +99,8 @@ class MqttOnlyBusRepository @Inject constructor(
     }
 
     fun disconnectMqtt() {
-        mqttService.disconnect()
+        // NON disconnettere MQTT - rimane attivo a livello di app
+        Log.d(TAG, "Repository disconnect called but MQTT connection preserved")
     }
 
     private fun generateMockLineStats(): List<LineStats> {

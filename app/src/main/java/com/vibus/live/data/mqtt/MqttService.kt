@@ -44,10 +44,13 @@ class MqttService @Inject constructor() {
     companion object {
         private const val TAG = "MqttService"
         private const val CLIENT_ID_PREFIX = "vibus_android_"
+        private const val RECONNECT_DELAY_MS = 5000L
     }
 
     private var mqttClient: Mqtt3AsyncClient? = null
     private val gson = Gson()
+    private var isInitialized = false
+    private var shouldStayConnected = true
 
     private val _connectionState = MutableStateFlow<MqttConnectionState>(MqttConnectionState.Disconnected)
     val connectionState: StateFlow<MqttConnectionState> = _connectionState.asStateFlow()
@@ -58,6 +61,16 @@ class MqttService @Inject constructor() {
     private val receivedPositions = mutableMapOf<String, MqttBusPosition>()
 
     fun connect() {
+        if (isInitialized && isConnected()) {
+            Log.d(TAG, "MQTT already connected, skipping connection attempt")
+            return
+        }
+
+        shouldStayConnected = true
+        startConnection()
+    }
+
+    private fun startConnection() {
         try {
             _connectionState.value = MqttConnectionState.Connecting
             Log.d(TAG, "Connecting to MQTT broker at ${NetworkConfig.CURRENT_MQTT_HOST}:${NetworkConfig.CURRENT_MQTT_PORT}")
@@ -79,9 +92,16 @@ class MqttService @Inject constructor() {
                 if (throwable != null) {
                     Log.e(TAG, "Failed to connect to MQTT broker", throwable)
                     _connectionState.value = MqttConnectionState.Error("Connection failed: ${throwable.message}")
+
+                    // Riprova automaticamente se dovremmo rimanere connessi
+                    if (shouldStayConnected) {
+                        Log.d(TAG, "Scheduling reconnection in ${RECONNECT_DELAY_MS}ms")
+                        scheduleReconnection()
+                    }
                 } else {
-                    Log.i(TAG, "Successfully connected to MQTT broker at ${NetworkConfig.CURRENT_MQTT_HOST}:${NetworkConfig.CURRENT_MQTT_PORT}")
+                    Log.i(TAG, "Successfully connected to MQTT broker")
                     _connectionState.value = MqttConnectionState.Connected
+                    isInitialized = true
                     subscribeToTopics()
                 }
             }
@@ -89,7 +109,21 @@ class MqttService @Inject constructor() {
         } catch (e: Exception) {
             Log.e(TAG, "Error creating MQTT client", e)
             _connectionState.value = MqttConnectionState.Error(e.message ?: "Client creation failed")
+
+            if (shouldStayConnected) {
+                scheduleReconnection()
+            }
         }
+    }
+
+    private fun scheduleReconnection() {
+        // Usa un handler per ritentare la connessione
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            if (shouldStayConnected && !isConnected()) {
+                Log.d(TAG, "Attempting automatic reconnection...")
+                startConnection()
+            }
+        }, RECONNECT_DELAY_MS)
     }
 
     private fun subscribeToTopics() {
@@ -114,25 +148,47 @@ class MqttService @Inject constructor() {
             val payload = String(publish.payloadAsBytes)
 
             Log.d(TAG, "Received MQTT message from topic: $topic")
-            Log.v(TAG, "Payload: $payload")
+            Log.v(TAG, "Raw payload: $payload")
 
-            val busPosition = gson.fromJson(payload, MqttBusPosition::class.java)
+            // Prova a parsare il JSON, gestendo doppia codifica
+            val busPosition = try {
+                // Prima prova il parsing diretto
+                gson.fromJson(payload, MqttBusPosition::class.java)
+            } catch (e: Exception) {
+                Log.d(TAG, "Direct parsing failed, trying to decode JSON string...")
+                try {
+                    // Se fallisce, prova a decodificare la stringa JSON
+                    val decodedPayload = gson.fromJson(payload, String::class.java)
+                    Log.v(TAG, "Decoded payload: $decodedPayload")
+                    gson.fromJson(decodedPayload, MqttBusPosition::class.java)
+                } catch (e2: Exception) {
+                    Log.e(TAG, "Both parsing methods failed", e2)
+                    Log.e(TAG, "Original payload: $payload")
+                    null
+                }
+            }
 
             if (busPosition != null && busPosition.bus_id.isNotEmpty()) {
                 receivedPositions[busPosition.bus_id] = busPosition
                 _busPositions.value = receivedPositions.values.toList()
 
-                Log.d(TAG, "Updated bus position: ${busPosition.bus_id} at (${busPosition.position.lat}, ${busPosition.position.lon})")
+                Log.d(TAG, "Successfully parsed bus: ${busPosition.bus_id} at (${busPosition.position.lat}, ${busPosition.position.lon})")
             } else {
-                Log.w(TAG, "Invalid bus position data received from topic: $topic")
+                Log.w(TAG, "Invalid or null bus position data from topic: $topic")
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "Error processing MQTT message", e)
+            Log.e(TAG, "Error processing MQTT message from topic: ${publish.topic}", e)
+            Log.e(TAG, "Payload causing error: ${String(publish.payloadAsBytes)}")
         }
     }
 
     fun disconnect() {
+        shouldStayConnected = false
+        performDisconnect()
+    }
+
+    private fun performDisconnect() {
         try {
             mqttClient?.disconnect()?.whenComplete { _, throwable ->
                 if (throwable != null) {
@@ -143,10 +199,26 @@ class MqttService @Inject constructor() {
                 _connectionState.value = MqttConnectionState.Disconnected
                 receivedPositions.clear()
                 _busPositions.value = emptyList()
+                isInitialized = false
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error during disconnect", e)
             _connectionState.value = MqttConnectionState.Disconnected
+            isInitialized = false
+        }
+    }
+
+    // Nuova funzione per disconnessione temporanea (non chiama shouldStayConnected = false)
+    fun pause() {
+        Log.d(TAG, "Pausing MQTT connection (will reconnect automatically)")
+        // Non cambiamo shouldStayConnected, così si riconnette automaticamente
+    }
+
+    // Nuova funzione per riconnessione manuale
+    fun resume() {
+        Log.d(TAG, "Resuming MQTT connection")
+        if (!isConnected() && shouldStayConnected) {
+            startConnection()
         }
     }
 
@@ -163,6 +235,7 @@ class MqttService @Inject constructor() {
         return "Host: ${NetworkConfig.CURRENT_MQTT_HOST}:${NetworkConfig.CURRENT_MQTT_PORT}, " +
                 "Topic: ${NetworkConfig.MQTT_TOPIC_BUS_POSITION}, " +
                 "State: ${_connectionState.value}, " +
-                "Positions: ${receivedPositions.size}"
+                "Positions: ${receivedPositions.size}, " +
+                "ShouldStayConnected: $shouldStayConnected"
     }
 }

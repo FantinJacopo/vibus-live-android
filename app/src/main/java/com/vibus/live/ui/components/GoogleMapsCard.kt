@@ -170,7 +170,7 @@ private fun EnhancedGoogleMapsHeader(
 
             Column {
                 Text(
-                    text = "🗺️ Mappa Tempo Reale",
+                    text = "Mappa Tempo Reale",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface

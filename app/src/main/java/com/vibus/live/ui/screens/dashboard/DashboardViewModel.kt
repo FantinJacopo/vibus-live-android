@@ -1,5 +1,6 @@
 package com.vibus.live.ui.screens.dashboard
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vibus.live.data.Bus
@@ -92,9 +93,9 @@ class DashboardViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        if (busRepository is MqttOnlyBusRepository) {
-            busRepository.disconnectMqtt()
-        }
+        // NON disconnettere MQTT quando il ViewModel viene distrutto
+        // MQTT rimane connesso a livello di applicazione
+        Log.d("DashboardViewModel", "ViewModel cleared but MQTT connection preserved")
     }
 }
 

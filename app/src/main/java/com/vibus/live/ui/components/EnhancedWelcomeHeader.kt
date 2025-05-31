@@ -77,7 +77,7 @@ fun EnhancedWelcomeHeader(
                 // Titolo animato
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "🌟",
+                        text = "🚍",
                         style = MaterialTheme.typography.headlineMedium,
                         modifier = Modifier
                             .scale(1f + sin(gradientOffset * 2 * PI).toFloat() * 0.1f)
@@ -110,12 +110,12 @@ fun EnhancedWelcomeHeader(
                 ) {
                     systemStatus?.let { status ->
                         EnhancedStatusBadge(
-                            text = "Sistema ${when(status.systemHealth) {
-                                SystemHealth.EXCELLENT -> "Ottimo"
-                                SystemHealth.GOOD -> "Buono"
-                                SystemHealth.FAIR -> "Discreto"
-                                SystemHealth.POOR -> "Scarso"
-                                SystemHealth.CRITICAL -> "Critico"
+                            text = "Puntualità media ${when(status.systemHealth) {
+                                SystemHealth.EXCELLENT -> "ottima"
+                                SystemHealth.GOOD -> "buona"
+                                SystemHealth.FAIR -> "discreta"
+                                SystemHealth.POOR -> "scarsa"
+                                SystemHealth.CRITICAL -> "pessima"
                             }}",
                             color = when (status.systemHealth) {
                                 SystemHealth.EXCELLENT -> StatusGreen
@@ -134,14 +134,16 @@ fun EnhancedWelcomeHeader(
                             animated = status.systemHealth != SystemHealth.EXCELLENT
                         )
                     }
-
-                    EnhancedStatusBadge(
-                        text = "Tempo Reale",
-                        color = StatusGreen,
-                        icon = Icons.Default.Schedule,
-                        animated = true
-                    )
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                EnhancedStatusBadge(
+                    text = "Tempo Reale",
+                    color = StatusGreen,
+                    icon = Icons.Default.Schedule,
+                    animated = true
+                )
             }
 
             // Icona animata laterale
