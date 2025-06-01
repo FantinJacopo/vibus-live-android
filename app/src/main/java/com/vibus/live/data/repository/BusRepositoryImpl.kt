@@ -27,13 +27,15 @@ class BusRepositoryImpl @Inject constructor(
     companion object {
         private const val TAG = "BusRepository"
         private const val UPDATE_INTERVAL_MS = 10_000L // 10 secondi
+        private const val STATS_UPDATE_INTERVAL_MS = 10_000L // 10 secondi per statistiche
         private const val FALLBACK_DELAY_MS = 15_000L // 15 secondi in caso di errore
     }
 
+    // ===== AUTOBUS REAL-TIME (esistente) =====
     override fun getRealTimeBuses(): Flow<List<Bus>> = flow {
         while (true) {
             try {
-                Log.d(TAG, "=== FETCHING REAL-TIME DATA ===")
+                Log.d(TAG, "=== FETCHING REAL-TIME BUS DATA ===")
                 Log.d(TAG, "Timestamp: ${LocalDateTime.now()}")
 
                 val response = api.queryFlux(
@@ -44,46 +46,115 @@ class BusRepositoryImpl @Inject constructor(
 
                 if (response.isSuccessful && response.body() != null) {
                     val csvData = response.body()!!
-                    Log.d(TAG, "Received CSV data: ${csvData.take(200)}...") // Log primi 200 char
+                    Log.d(TAG, "Received CSV data: ${csvData.take(200)}...")
 
                     val buses = parseRealTimeBusData(csvData)
                     Log.d(TAG, "Parsed ${buses.size} buses from InfluxDB")
 
                     if (buses.isNotEmpty()) {
                         Log.d(TAG, "=== EMITTING ${buses.size} BUSES ===")
-                        buses.forEach { bus ->
-                            Log.d(TAG, "Emitting: ${bus.id} at ${bus.position.latitude}, ${bus.position.longitude} (updated: ${bus.lastUpdate})")
-                        }
                         emit(buses)
                     } else {
                         Log.w(TAG, "No buses found in InfluxDB, using fallback data")
                         val fallback = generateFallbackBuses()
-                        Log.d(TAG, "=== EMITTING ${fallback.size} FALLBACK BUSES ===")
                         emit(fallback)
                     }
                 } else {
                     Log.e(TAG, "InfluxDB query failed: ${response.code()} - ${response.message()}")
                     val fallback = generateFallbackBuses()
-                    Log.d(TAG, "=== EMITTING ${fallback.size} FALLBACK BUSES (ERROR) ===")
                     emit(fallback)
                 }
 
-                Log.d(TAG, "Waiting ${UPDATE_INTERVAL_MS}ms for next update...")
                 delay(UPDATE_INTERVAL_MS)
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error fetching bus data", e)
                 val fallback = generateFallbackBuses()
-                Log.d(TAG, "=== EMITTING ${fallback.size} FALLBACK BUSES (EXCEPTION) ===")
                 emit(fallback)
                 delay(FALLBACK_DELAY_MS)
             }
         }
     }
 
+    // ===== NUOVO: STATISTICHE LINEE REAL-TIME =====
+    override fun getRealTimeLineStats(): Flow<List<LineStats>> = flow {
+        while (true) {
+            try {
+                Log.d(TAG, "=== FETCHING REAL-TIME LINE STATS ===")
+
+                val response = api.queryFlux(
+                    token = InfluxApiService.TOKEN,
+                    org = InfluxApiService.ORG,
+                    query = InfluxApiService.getLineStatsQuery()
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val csvData = response.body()!!
+                    Log.d(TAG, "Received line stats CSV: ${csvData.take(200)}...")
+
+                    val stats = parseLineStatsData(csvData)
+                    Log.d(TAG, "Parsed ${stats.size} line statistics from InfluxDB")
+
+                    if (stats.isNotEmpty()) {
+                        emit(stats)
+                    } else {
+                        Log.w(TAG, "No line stats found in InfluxDB, using fallback")
+                        emit(generateFallbackLineStats())
+                    }
+                } else {
+                    Log.e(TAG, "Line stats query failed: ${response.code()}")
+                    emit(generateFallbackLineStats())
+                }
+
+                delay(STATS_UPDATE_INTERVAL_MS)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching line stats", e)
+                emit(generateFallbackLineStats())
+                delay(FALLBACK_DELAY_MS)
+            }
+        }
+    }
+
+    // ===== NUOVO: STATO SISTEMA REAL-TIME =====
+    override fun getRealTimeSystemStatus(): Flow<SystemStatus?> = flow {
+        while (true) {
+            try {
+                Log.d(TAG, "=== FETCHING REAL-TIME SYSTEM STATUS ===")
+
+                val response = api.queryFlux(
+                    token = InfluxApiService.TOKEN,
+                    org = InfluxApiService.ORG,
+                    query = InfluxApiService.getSystemStatusQuery()
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val csvData = response.body()!!
+                    Log.d(TAG, "Received system status CSV: ${csvData.take(200)}...")
+
+                    val status = parseSystemStatusData(csvData)
+                    Log.d(TAG, "Parsed system status from InfluxDB: $status")
+
+                    emit(status ?: generateFallbackSystemStatus())
+                } else {
+                    Log.e(TAG, "System status query failed: ${response.code()}")
+                    emit(generateFallbackSystemStatus())
+                }
+
+                delay(STATS_UPDATE_INTERVAL_MS)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching system status", e)
+                emit(generateFallbackSystemStatus())
+                delay(FALLBACK_DELAY_MS)
+            }
+        }
+    }
+
+    // ===== METODI LEGACY (mantenuti per compatibilità) =====
     override suspend fun getLineStats(): List<LineStats> {
         return try {
-            Log.d(TAG, "Fetching line statistics from InfluxDB...")
+            Log.d(TAG, "Fetching line statistics from InfluxDB (legacy method)...")
 
             val response = api.queryFlux(
                 token = InfluxApiService.TOKEN,
@@ -93,11 +164,7 @@ class BusRepositoryImpl @Inject constructor(
 
             if (response.isSuccessful && response.body() != null) {
                 val csvData = response.body()!!
-                Log.d(TAG, "Received line stats CSV: ${csvData.take(200)}...")
-
                 val stats = parseLineStatsData(csvData)
-                Log.d(TAG, "Parsed ${stats.size} line statistics")
-
                 if (stats.isNotEmpty()) stats else generateFallbackLineStats()
             } else {
                 Log.e(TAG, "Line stats query failed: ${response.code()}")
@@ -111,7 +178,7 @@ class BusRepositoryImpl @Inject constructor(
 
     override suspend fun getSystemStatus(): SystemStatus {
         return try {
-            Log.d(TAG, "Fetching system status from InfluxDB...")
+            Log.d(TAG, "Fetching system status from InfluxDB (legacy method)...")
 
             val response = api.queryFlux(
                 token = InfluxApiService.TOKEN,
@@ -121,11 +188,7 @@ class BusRepositoryImpl @Inject constructor(
 
             if (response.isSuccessful && response.body() != null) {
                 val csvData = response.body()!!
-                Log.d(TAG, "Received system status CSV: ${csvData.take(200)}...")
-
                 val status = parseSystemStatusData(csvData)
-                Log.d(TAG, "Parsed system status: $status")
-
                 status ?: generateFallbackSystemStatus()
             } else {
                 Log.e(TAG, "System status query failed: ${response.code()}")
@@ -137,27 +200,17 @@ class BusRepositoryImpl @Inject constructor(
         }
     }
 
-    // Parsing delle risposte CSV di InfluxDB
+    // ===== PARSING DELLE RISPOSTE CSV DI INFLUXDB =====
+
     private fun parseRealTimeBusData(csvData: String): List<Bus> {
         return try {
             Log.d(TAG, "=== PARSING CSV DATA ===")
-            Log.d(TAG, "Raw CSV length: ${csvData.length}")
-            Log.d(TAG, "First 500 chars: ${csvData.take(500)}")
-
             val parsed = InfluxCSVParser.parseCSV(csvData)
             Log.d(TAG, "Headers found: ${parsed.headers}")
             Log.d(TAG, "Number of rows: ${parsed.rows.size}")
 
-            if (parsed.rows.isNotEmpty()) {
-                Log.d(TAG, "First row: ${parsed.rows.first()}")
-                if (parsed.rows.size > 1) {
-                    Log.d(TAG, "Second row: ${parsed.rows[1]}")
-                }
-            }
-
             val buses = mutableListOf<Bus>()
 
-            // Trova gli indici delle colonne - prova diversi nomi possibili
             val busIdIndex = findColumnIndex(parsed.headers, listOf("bus_id", "busId", "id"))
             val lineIndex = findColumnIndex(parsed.headers, listOf("line", "lineId"))
             val latIndex = findColumnIndex(parsed.headers, listOf("latitude", "lat"))
@@ -168,16 +221,10 @@ class BusRepositoryImpl @Inject constructor(
             val passengersIndex = findColumnIndex(parsed.headers, listOf("passengers"))
             val statusIndex = findColumnIndex(parsed.headers, listOf("status"))
 
-            Log.d(TAG, "Column indices: busId=$busIdIndex, line=$lineIndex, lat=$latIndex, lon=$lonIndex")
-
             parsed.rows.forEachIndexed { index, row ->
                 if (row.isNotEmpty() && busIdIndex >= 0) {
                     val busId = InfluxCSVParser.safeGetValue(row, busIdIndex)
                     val line = InfluxCSVParser.safeGetValue(row, lineIndex)
-                    val lat = InfluxCSVParser.safeGetDouble(row, latIndex, 45.5477)
-                    val lon = InfluxCSVParser.safeGetDouble(row, lonIndex, 11.5458)
-
-                    Log.d(TAG, "Row $index: busId='$busId', line='$line', lat=$lat, lon=$lon")
 
                     if (busId.isNotBlank() && line.isNotBlank()) {
                         val bus = Bus(
@@ -185,8 +232,8 @@ class BusRepositoryImpl @Inject constructor(
                             line = line,
                             lineName = getLineDisplayName(line),
                             position = Position(
-                                latitude = lat,
-                                longitude = lon
+                                latitude = InfluxCSVParser.safeGetDouble(row, latIndex, 45.5477),
+                                longitude = InfluxCSVParser.safeGetDouble(row, lonIndex, 11.5458)
                             ),
                             speed = InfluxCSVParser.safeGetDouble(row, speedIndex, 25.0),
                             bearing = InfluxCSVParser.safeGetInt(row, bearingIndex, 0),
@@ -196,34 +243,15 @@ class BusRepositoryImpl @Inject constructor(
                             lastUpdate = LocalDateTime.now()
                         )
                         buses.add(bus)
-                        Log.d(TAG, "Added bus: ${bus.id} - ${bus.lineName} at (${bus.position.latitude}, ${bus.position.longitude})")
-                    } else {
-                        Log.w(TAG, "Skipping row $index: busId='$busId', line='$line' (missing required data)")
                     }
                 }
-            }
-
-            Log.d(TAG, "=== PARSING COMPLETE ===")
-            Log.d(TAG, "Total buses parsed: ${buses.size}")
-            buses.forEach { bus ->
-                Log.d(TAG, "Final bus: ${bus.id} (${bus.line}) - ${bus.position.latitude}, ${bus.position.longitude}")
             }
 
             buses
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing bus data CSV", e)
-            Log.d(TAG, "CSV data that failed: $csvData")
             emptyList()
         }
-    }
-
-    // Helper per trovare l'indice di una colonna con nomi alternativi
-    private fun findColumnIndex(headers: List<String>, possibleNames: List<String>): Int {
-        for (name in possibleNames) {
-            val index = headers.indexOfFirst { it.equals(name, ignoreCase = true) }
-            if (index >= 0) return index
-        }
-        return -1
     }
 
     private fun parseLineStatsData(csvData: String): List<LineStats> {
@@ -249,7 +277,7 @@ class BusRepositoryImpl @Inject constructor(
                                 activeBuses = InfluxCSVParser.safeGetInt(row, activeBusesIndex, 2),
                                 averageSpeed = InfluxCSVParser.safeGetDouble(row, avgSpeedIndex, 25.0),
                                 averageDelay = InfluxCSVParser.safeGetDouble(row, avgDelayIndex, 0.0),
-                                maxDelay = InfluxCSVParser.safeGetDouble(row, avgDelayIndex, 0.0) + 2.0, // Approssimazione
+                                maxDelay = InfluxCSVParser.safeGetDouble(row, avgDelayIndex, 0.0) + 2.0,
                                 onTimePercentage = InfluxCSVParser.safeGetDouble(row, onTimeIndex, 85.0),
                                 totalPassengers = InfluxCSVParser.safeGetInt(row, totalPassengersIndex, 100),
                                 lastUpdate = LocalDateTime.now()
@@ -278,7 +306,7 @@ class BusRepositoryImpl @Inject constructor(
                 val avgDelayIndex = InfluxCSVParser.getColumnIndex(parsed.headers, "avg_system_delay")
 
                 SystemStatus(
-                    totalBuses = 10, // Valore fisso per ora
+                    totalBuses = 10,
                     activeBuses = InfluxCSVParser.safeGetInt(row, activeBusesIndex, 8),
                     totalPassengers = InfluxCSVParser.safeGetInt(row, totalPassengersIndex, 250),
                     averageSystemDelay = InfluxCSVParser.safeGetDouble(row, avgDelayIndex, 1.5),
@@ -292,7 +320,16 @@ class BusRepositoryImpl @Inject constructor(
         }
     }
 
-    // Utility functions
+    // ===== UTILITY FUNCTIONS =====
+
+    private fun findColumnIndex(headers: List<String>, possibleNames: List<String>): Int {
+        for (name in possibleNames) {
+            val index = headers.indexOfFirst { it.equals(name, ignoreCase = true) }
+            if (index >= 0) return index
+        }
+        return -1
+    }
+
     private fun getLineDisplayName(line: String): String {
         return when (line) {
             "1" -> "Stanga-Ospedale"
@@ -324,7 +361,8 @@ class BusRepositoryImpl @Inject constructor(
         }
     }
 
-    // Fallback data per quando InfluxDB non è disponibile
+    // ===== FALLBACK DATA =====
+
     private fun generateFallbackBuses(): List<Bus> {
         val lines = listOf(
             "1" to "Stanga-Ospedale",
@@ -336,16 +374,13 @@ class BusRepositoryImpl @Inject constructor(
 
         val vicenzaCenter = Position(45.5477, 11.5458)
         val buses = mutableListOf<Bus>()
-
-        // Usa un timestamp base per simulare movimento consistente
         val currentTime = System.currentTimeMillis()
-        val timeOffset = (currentTime / 10000) % 1000 // Cambia ogni 10 secondi
+        val timeOffset = (currentTime / 10000) % 1000
 
         lines.forEach { (lineId, lineName) ->
             repeat(2) { busIndex ->
-                // Simula movimento circolare attorno al centro
                 val angle = (timeOffset + busIndex * 180 + lineId.toInt() * 72) * Math.PI / 180
-                val radius = 0.01 + (busIndex * 0.005) // Raggio diverso per ogni autobus
+                val radius = 0.01 + (busIndex * 0.005)
 
                 val lat = vicenzaCenter.latitude + radius * cos(angle)
                 val lon = vicenzaCenter.longitude + radius * sin(angle)
@@ -355,12 +390,9 @@ class BusRepositoryImpl @Inject constructor(
                         id = "SVT${lineId}${(busIndex + 1).toString().padStart(2, '0')}",
                         line = lineId,
                         lineName = lineName,
-                        position = Position(
-                            latitude = lat,
-                            longitude = lon
-                        ),
+                        position = Position(latitude = lat, longitude = lon),
                         speed = 25.0 + Random.nextDouble() * 15.0,
-                        bearing = ((angle * 180 / Math.PI) + 90).toInt() % 360, // Direzione del movimento
+                        bearing = ((angle * 180 / Math.PI) + 90).toInt() % 360,
                         delay = (Random.nextDouble() - 0.3) * 5.0,
                         passengers = Random.nextInt(0, 45),
                         status = if (Random.nextDouble() > 0.1) BusStatus.IN_SERVICE else BusStatus.DELAYED,
@@ -370,7 +402,7 @@ class BusRepositoryImpl @Inject constructor(
             }
         }
 
-        Log.d(TAG, "Generated ${buses.size} fallback buses with simulated movement")
+        Log.d(TAG, "Generated ${buses.size} fallback buses")
         return buses
     }
 

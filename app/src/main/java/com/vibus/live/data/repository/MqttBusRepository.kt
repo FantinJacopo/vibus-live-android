@@ -16,7 +16,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
-
+/*
 @Singleton
 class MqttBusRepository @Inject constructor(
     private val mqttService: MqttService,
@@ -121,4 +121,4 @@ class MqttBusRepository @Inject constructor(
     fun disconnectMqtt() {
         mqttService.disconnect()
     }
-}
+}*/

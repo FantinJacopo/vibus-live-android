@@ -8,7 +8,6 @@ import com.vibus.live.data.LineStats
 import com.vibus.live.data.SystemStatus
 import com.vibus.live.data.mqtt.MqttConnectionState
 import com.vibus.live.data.repository.BusRepository
-import com.vibus.live.data.repository.MqttBusRepository
 import com.vibus.live.data.repository.MqttOnlyBusRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -19,6 +18,10 @@ import javax.inject.Inject
 class DashboardViewModel @Inject constructor(
     private val busRepository: BusRepository
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "DashboardViewModel"
+    }
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -38,17 +41,22 @@ class DashboardViewModel @Inject constructor(
     }
 
     init {
-        loadData()
-        startRealTimeUpdates()
+        Log.d(TAG, "Initializing DashboardViewModel with real-time flows...")
+        startRealTimeStreams()
     }
 
-    private fun startRealTimeUpdates() {
+    // ===== NUOVO: STREAMS REAL-TIME AUTOMATICI =====
+    private fun startRealTimeStreams() {
+        // 1. Stream autobus real-time (esistente)
         viewModelScope.launch {
+            Log.d(TAG, "Starting real-time bus positions stream...")
             busRepository.getRealTimeBuses()
                 .catch { e ->
-                    _uiState.update { it.copy(error = e.message) }
+                    Log.e(TAG, "Error in bus positions stream", e)
+                    _uiState.update { it.copy(error = "Errore posizioni autobus: ${e.message}") }
                 }
                 .collect { buses ->
+                    Log.d(TAG, "Received ${buses.size} buses from real-time stream")
                     _uiState.update {
                         it.copy(
                             buses = buses,
@@ -58,45 +66,85 @@ class DashboardViewModel @Inject constructor(
                     }
                 }
         }
+
+        // 2. NUOVO: Stream statistiche linee real-time
+        viewModelScope.launch {
+            Log.d(TAG, "Starting real-time line stats stream...")
+            busRepository.getRealTimeLineStats()
+                .catch { e ->
+                    Log.e(TAG, "Error in line stats stream", e)
+                    // Non aggiornare l'errore principale, solo loggare
+                }
+                .collect { lineStats ->
+                    Log.d(TAG, "Received ${lineStats.size} line stats from real-time stream")
+                    _uiState.update {
+                        it.copy(lineStats = lineStats)
+                    }
+                }
+        }
+
+        // 3. NUOVO: Stream stato sistema real-time
+        viewModelScope.launch {
+            Log.d(TAG, "Starting real-time system status stream...")
+            busRepository.getRealTimeSystemStatus()
+                .catch { e ->
+                    Log.e(TAG, "Error in system status stream", e)
+                    // Non aggiornare l'errore principale, solo loggare
+                }
+                .collect { systemStatus ->
+                    Log.d(TAG, "Received system status from real-time stream: $systemStatus")
+                    _uiState.update {
+                        it.copy(systemStatus = systemStatus)
+                    }
+                }
+        }
     }
 
-    private fun loadData() {
+    // ===== METODO REFRESH (ora opzionale) =====
+    fun refresh() {
+        Log.d(TAG, "Manual refresh requested - real-time streams should handle updates automatically")
+
+        // Con i flow real-time, il refresh manuale serve principalmente per
+        // resettare errori o forzare una riconnessione
         viewModelScope.launch {
             try {
-                _uiState.update { it.copy(isLoading = true) }
+                _uiState.update { it.copy(isLoading = true, error = null) }
 
-                val lineStats = busRepository.getLineStats()
-                val systemStatus = busRepository.getSystemStatus()
-
-                _uiState.update {
-                    it.copy(
-                        lineStats = lineStats,
-                        systemStatus = systemStatus,
-                        isLoading = false,
-                        error = null
-                    )
+                // Forza reconnect MQTT se necessario
+                if (busRepository is MqttOnlyBusRepository) {
+                    // I flow real-time si riconnetteranno automaticamente
+                    Log.d(TAG, "Manual refresh - MQTT streams will reconnect if needed")
                 }
+
+                // Reset loading state - i flow real-time aggiorneranno i dati
+                _uiState.update { it.copy(isLoading = false) }
+
             } catch (e: Exception) {
+                Log.e(TAG, "Error during manual refresh", e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = e.message ?: "Errore sconosciuto"
+                        error = "Errore durante il refresh: ${e.message}"
                     )
                 }
             }
         }
     }
 
-    fun refresh() {
-        loadData()
-    }
-
     override fun onCleared() {
         super.onCleared()
-        // NON disconnettere MQTT quando il ViewModel viene distrutto
+        Log.d(TAG, "ViewModel cleared - MQTT connection preserved for app-level persistence")
         // MQTT rimane connesso a livello di applicazione
-        Log.d("DashboardViewModel", "ViewModel cleared but MQTT connection preserved")
     }
+
+    // ===== DEBUG HELPER =====
+    /*fun getDebugInfo(): String {
+        return if (busRepository is MqttOnlyBusRepository) {
+            busRepository.getDebugInfo()
+        } else {
+            "Repository type: ${busRepository::class.simpleName}"
+        }
+    }*/
 }
 
 data class DashboardUiState(
